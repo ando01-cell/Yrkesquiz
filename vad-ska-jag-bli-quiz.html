@@ -1,0 +1,259 @@
+
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Vad ska jag bli?</title>
+  <style>
+    :root {
+      --accent: #4CAF50;
+      --bg: #f9f9f9;
+      --text: #333;
+      --card: #fff;
+    }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 1em;
+    }
+    h1 {
+      text-align: center;
+      color: var(--accent);
+    }
+    .question {
+      background: var(--card);
+      padding: 1em;
+      margin: 1em 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .question legend {
+      font-weight: bold;
+    }
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.7em 1.2em;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 1em;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    #result {
+      background: var(--card);
+      padding: 1em;
+      margin-top: 2em;
+      border-radius: 8px;
+    }
+    .bar {
+      height: 20px;
+      background: var(--accent);
+      margin: 5px 0;
+      border-radius: 5px;
+    }
+    .qr-section {
+      margin-top: 2em;
+      text-align: center;
+    }
+    input[type="text"] {
+      padding: 0.5em;
+      width: 80%;
+      margin-top: 1em;
+    }
+    canvas {
+      margin-top: 1em;
+    }
+  </style>
+</head>
+<body>
+  <h1>Vad ska jag bli? 🎓</h1>
+  <form id="quizForm">
+    <!-- Questions will be injected here -->
+  </form>
+  <button onclick="calculateResult()">Visa mitt resultat</button>
+  <div id="result"></div>
+  <div class="qr-section">
+    <h3>URL där sidan publiceras:</h3>
+    <input type="text" id="qrInput" placeholder="Klistra in din publicerade URL här" oninput="generateQR()"/>
+    <canvas id="qrCanvas"></canvas>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <script>
+    const QUESTIONS = [
+      {
+        question: "Hur ser din dröm-arbetsdag ut?",
+        options: [
+          { text: "Skapa något med händerna och se resultatet direkt", traits: ["bygga"] },
+          { text: "Lösa problem med teknik och logik", traits: ["tech"] },
+          { text: "Hjälpa människor och göra skillnad", traits: ["omsorg"] },
+          { text: "Vara ute i naturen och jobba praktiskt", traits: ["ute"] }
+        ]
+      },
+      {
+        question: "Vilket av dessa låter mest som du?",
+        options: [
+          { text: "Jag älskar att fixa saker som gått sönder", traits: ["bygga", "marine"] },
+          { text: "Jag är kreativ och gillar att uttrycka mig", traits: ["kreativ"] },
+          { text: "Jag är tryggheten själv och gillar ordning", traits: ["struktur"] },
+          { text: "Jag gillar att köra och känna friheten på vägarna", traits: ["transport"] }
+        ]
+      },
+      {
+        question: "Vilken miljö trivs du bäst i?",
+        options: [
+          { text: "Verkstad med maskiner och verktyg", traits: ["bygga"] },
+          { text: "Kontor med dator och kaffe", traits: ["tech"] },
+          { text: "Bland människor, gärna i ett team", traits: ["omsorg"] },
+          { text: "Ute i friska luften bland växter", traits: ["ute"] }
+        ]
+      },
+      {
+        question: "Vad gör du helst på fritiden?",
+        options: [
+          { text: "Snickrar, syr eller bygger något", traits: ["bygga", "kreativ"] },
+          { text: "Spelar spel eller kodar", traits: ["tech"] },
+          { text: "Hänger med familj och vänner", traits: ["omsorg"] },
+          { text: "Går på promenad eller fixar i trädgården", traits: ["ute"] }
+        ]
+      },
+      {
+        question: "Vilken superkraft skulle du vilja ha?",
+        options: [
+          { text: "Bygga vad som helst med ett fingerknäpp", traits: ["bygga"] },
+          { text: "Läsa och förstå all teknik direkt", traits: ["tech"] },
+          { text: "Sprida trygghet och glädje", traits: ["omsorg"] },
+          { text: "Kontrollera väder och natur", traits: ["ute"] }
+        ]
+      },
+      {
+        question: "Vad gör du när något går fel?",
+        options: [
+          { text: "Tar fram verktyg och fixar det", traits: ["bygga"] },
+          { text: "Analyserar och felsöker", traits: ["tech"] },
+          { text: "Tröstar och hjälper till", traits: ["omsorg"] },
+          { text: "Tar en paus ute och tänker", traits: ["ute"] }
+        ]
+      },
+      {
+        question: "Vilken emoji beskriver dig bäst?",
+        options: [
+          { text: "🔧", traits: ["bygga", "marine"] },
+          { text: "💻", traits: ["tech"] },
+          { text: "❤️", traits: ["omsorg"] },
+          { text: "🌳", traits: ["ute"] }
+        ]
+      }
+    ];
+
+    const TRAIT_TO_PROGRAMS = {
+      bygga: ["Skräddare", "Maskinsnickare", "Bygg", "CNC-operatör", "Svets", "Mekaniker"],
+      tech: ["Backend-utvecklare", "Digital kommunikatör", "CNC-operatör", "Mekaniker"],
+      omsorg: ["Barnskötare", "Undersköterska", "Stödpedagog", "Städservice"],
+      ute: ["Trädgård", "Park och utemiljö", "Städservice"],
+      kreativ: ["Film", "Digital kommunikatör", "Skräddare"],
+      struktur: ["Larm och säkerhet", "Städservice", "Bygg"],
+      transport: ["Buss", "Lastbil"],
+      marine: ["Marinteknik", "Marinserviceingenjör", "Mekaniker"]
+    };
+
+    const PROGRAM_DESCRIPTIONS = {
+      "Skräddare": "Skapa kläder med stil och precision 👗",
+      "Maskinsnickare": "Forma trä med maskiner och kreativitet 🪵",
+      "Bygg": "Bygg framtiden med händerna 🏗️",
+      "CNC-operatör": "Programmera maskiner för perfektion ⚙️",
+      "Svets": "Smält metall och skapa starka konstruktioner 🔥",
+      "Mekaniker": "Fixa och förstå maskiner 🚗",
+      "Backend-utvecklare": "Kodens mästare bakom kulisserna 💻",
+      "Digital kommunikatör": "Sprid budskap med kreativitet 📱",
+      "Barnskötare": "Skapa trygghet för de minsta 👶",
+      "Undersköterska": "Vårda och hjälp med hjärta ❤️",
+      "Stödpedagog": "Stötta och utveckla andra 🌟",
+      "Städservice": "Skapa ordning och trivsel 🧼",
+      "Trädgård": "Jobba med växter och natur 🌿",
+      "Park och utemiljö": "Forma gröna miljöer utomhus 🌳",
+      "Film": "Berätta historier med bild och ljud 🎬",
+      "Larm och säkerhet": "Skydda och säkra miljöer 🔐",
+      "Buss": "Kör människor dit de ska 🚌",
+      "Lastbil": "Transportera varor med kraft 🚚",
+      "Marinteknik": "Jobba med teknik på havet ⚓",
+      "Marinserviceingenjör": "Serva marina system med precision 🛥️"
+    };
+
+    function renderQuestions() {
+      const form = document.getElementById("quizForm");
+      QUESTIONS.forEach((q, i) => {
+        const fieldset = document.createElement("fieldset");
+        fieldset.className = "question";
+        const legend = document.createElement("legend");
+        legend.textContent = `Fråga ${i + 1}: ${q.question}`;
+        fieldset.appendChild(legend);
+        q.options.forEach((opt, j) => {
+          const label = document.createElement("label");
+          const input = document.createElement("input");
+          input.type = "radio";
+          input.name = `q${i}`;
+          input.value = j;
+          label.appendChild(input);
+          label.appendChild(document.createTextNode(" " + opt.text));
+          fieldset.appendChild(label);
+          fieldset.appendChild(document.createElement("br"));
+        });
+        form.appendChild(fieldset);
+      });
+    }
+
+    function calculateResult() {
+      const answers = [];
+      for (let i = 0; i < QUESTIONS.length; i++) {
+        const selected = document.querySelector(`input[name="q${i}"]:checked`);
+        if (selected) {
+          answers.push(QUESTIONS[i].options[selected.value].traits);
+        }
+      }
+
+      const traitScores = {};
+      answers.flat().forEach(trait => {
+        traitScores[trait] = (traitScores[trait] || 0) + 1;
+      });
+
+      const programScores = {};
+      for (const trait in traitScores) {
+        const programs = TRAIT_TO_PROGRAMS[trait] || [];
+        programs.forEach(p => {
+          programScores[p] = (programScores[p] || 0) + traitScores[trait];
+        });
+      }
+
+      const sorted = Object.entries(programScores).sort((a,b) => b[1]-a[1]).slice(0,3);
+      const total = sorted.reduce((sum, [_, score]) => sum + score, 0);
+
+      const resultDiv = document.getElementById("result");
+      resultDiv.innerHTML = "<h2>Dina topp 3 utbildningar:</h2>";
+      sorted.forEach(([program, score]) => {
+        const percent = Math.round((score / total) * 100);
+        const bar = `<div class="bar" style="width:${percent}%"></div>`;
+        const desc = PROGRAM_DESCRIPTIONS[program] || "";
+        resultDiv.innerHTML += `<p><strong>${program}</strong> (${percent}%)<br>${desc}</p>${bar}`;
+      });
+    }
+
+    function generateQR() {
+      const url = document.getElementById("qrInput").value || window.location.href;
+      const canvas = document.getElementById("qrCanvas");
+      QRCode.toCanvas(canvas, url, function (error) {
+        if (error) console.error(error);
+      });
+    }
+
+    renderQuestions();
+    generateQR();
+  </script>
+</body>
+</html>
